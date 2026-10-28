@@ -312,7 +312,7 @@ function applyVol(){if(!AC)return;musicBus.gain.value=(vol/100)*.9;sfxBus.gain.v
 function pluckBuf(f,dur,decay,bright){const key=f.toFixed(2)+dur+decay;if(bufCache[key])return bufCache[key];
   const sr=AC.sampleRate,len=Math.floor(sr*dur),b=AC.createBuffer(1,len,sr),d=b.getChannelData(0),N=Math.max(2,Math.round(sr/f));
   for(let i=0;i<N;i++)d[i]=(Math.random()*2-1)*(i<N*bright?1:.4);
-  for(let i=N;i<len;i++){let y=decay*.5*(d[i-N]+d[i-N-1]);if(Math.abs(y)>.32)y*=.9;d[i]=y} // slight clip = sitar buzz
+  for(let i=N+1;i<len;i++){let y=decay*.5*(d[i-N]+d[i-N-1]);if(Math.abs(y)>.32)y*=.9;d[i]=y} // slight clip = sitar buzz
   return bufCache[key]=b}
 function pluck(f,t,g=.5,dur=2.2,decay=.997,dest=musicBus,detune=0){const s=AC.createBufferSource();s.buffer=pluckBuf(f,dur,decay,.6);s.detune.value=detune;
   const v=AC.createGain();v.gain.value=g;s.connect(v);v.connect(dest);s.start(t)}
@@ -340,7 +340,7 @@ function schedMusic(){while(nextT<AC.currentTime+.25){const t=nextT,m=step%8;
     if(step%2===0){if(!phrase.length)phrase=newPhrase();const n=phrase.shift();
       if(n!=null){pluck(noteF(n),t,.42,2.2,.996);if(Math.random()<.3&&phrase[0]!=null)pluck(noteF(n),t+BEAT*.5,.3,1.6,.995,musicBus,-25)}}
     step++;nextT+=BEAT}}
-function startMusic(){ensureAudio();AC.resume();
+function startMusic(){ensureAudio();if(AC.state!=='running'){AC.resume().then(()=>{if(playing&&!ownAudio){nextT=AC.currentTime+.1}})}
   if(ownAudio){ownAudio.volume=vol/100;ownAudio.play().catch(()=>{})}
   else{nextT=AC.currentTime+.1;step=0;phrase=[];schedMusic();timer=setInterval(schedMusic,40)}
   playing=true;updateBtn()}
