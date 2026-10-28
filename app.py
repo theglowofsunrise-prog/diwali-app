@@ -62,7 +62,7 @@ if not st.session_state.get("signed_in"):
     st.stop()
 
 html = (Path(__file__).parent / "diwali.html").read_text(encoding="utf-8")
-components.html(html, height=980, scrolling=True)
+components.html(html, height=900, scrolling=True)
 
 _, right = st.columns([6, 1])
 with right:

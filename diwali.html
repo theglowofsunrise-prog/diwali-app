@@ -159,9 +159,9 @@ hr{border:0;border-top:1px dashed var(--line);margin:4px 0;width:100%}
       <label for="vol">Music volume</label>
       <input type="range" id="vol" min="0" max="100" value="60">
       <label class="switch"><input type="checkbox" id="sfxToggle" checked> Wheel ticks and winner bell</label>
-      <label for="ownSong">Play your own song instead (MP3 on this laptop)</label>
+      <label for="ownSong">Your own song (MP3 or other audio file from this laptop)</label>
       <input type="file" id="ownSong" accept="audio/*">
-      <div class="row"><button class="btn ghost" id="useBuiltIn">Back to built-in festival music</button></div>
+      <div class="row"><button class="btn ghost" id="useBuiltIn">Use built-in music instead</button></div>
       <p class="hint" id="songMsg">Playing: built-in festival music (Raag Bhupali with tabla).</p>
       <hr>
       <div class="row"><button class="btn ghost" id="clearLog">Clear winners list</button><span class="hint" id="clearMsg"></span></div>
@@ -260,14 +260,16 @@ const PAL=[['#ffd27a','#fff4dc'],['#ff6b3d','#ffd27a'],['#ff4f8b','#ffc0d6'],['#
 let P=[],E=[],R=[];const MAXP=1600;
 const rnd=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.floor(Math.random()*a.length)];
 function spark(x,y,vx,vy,c,life,o={}){if(P.length>=MAXP)return;P.push({x,y,px:x,py:y,vx,vy,c,life,max:life,g:o.g??.05,drag:o.drag??.985,w:o.w??2,tw:o.tw||0})}
-function rocket(x){R.push({x:x??rnd(W*.1,W*.9),y:H+10,vx:rnd(-.8,.8),vy:-rnd(H*.0105+6,H*.012+8),c:pick(PAL),type:pick(['peony','peony','ring','willow','crackle'])})}
+function ground(){const r=document.getElementById('diyaRow').getBoundingClientRect();return Math.max(H*.45,Math.min(H-8,r.top+r.height*.35))}
+function sideX(){return Math.random()<.5?rnd(W*.03,W*.13):rnd(W*.87,W*.97)}
+function rocket(x){R.push({x:x??rnd(W*.1,W*.9),y:ground(),vx:rnd(-.8,.8),vy:-rnd(7,10),c:pick(PAL),type:pick(['peony','peony','ring','willow','crackle'])})}
 function explode(r){const [c1,c2]=r.c,n=r.type==='ring'?70:r.type==='willow'?90:110;
   for(let i=0;i<n;i++){const a=r.type==='ring'?i/n*Math.PI*2:rnd(0,Math.PI*2),s=r.type==='ring'?4.2:rnd(1,r.type==='willow'?3.2:5.5);
     const c=r.type==='willow'?'#ffcf6b':(Math.random()<.7?c1:c2);
     spark(r.x,r.y,Math.cos(a)*s,Math.sin(a)*s,c,r.type==='willow'?rnd(90,130):rnd(55,85),{g:r.type==='willow'?.035:.05,drag:r.type==='willow'?.975:.982,w:2.2,tw:r.type==='crackle'||Math.random()<.25?1:0})}
   if(r.type==='crackle')setTimeout(()=>{for(let i=0;i<40;i++)spark(r.x+rnd(-90,90),r.y+rnd(-60,90),rnd(-1,1),rnd(-1,1),'#fff',rnd(10,22),{g:0,w:2.6,tw:1})},500)}
-function anar(x){E.push({kind:'anar',x:x??rnd(W*.08,W*.92),y:H-6,t:0,dur:rnd(180,260)})}
-function chakri(x){E.push({kind:'chakri',x:x??rnd(W*.1,W*.9),y:H-rnd(20,60),t:0,dur:rnd(160,220),a:0})}
+function anar(x){E.push({kind:'anar',x:x??sideX(),y:ground(),t:0,dur:rnd(180,260)})}
+function chakri(x){E.push({kind:'chakri',x:x??sideX(),y:ground()-rnd(10,40),t:0,dur:rnd(160,220),a:0})}
 function phuljhari(){const x=rnd(W*.1,W*.9),y=rnd(H*.25,H*.75);E.push({kind:'phul',x,y,ox:x,oy:y,t:0,dur:rnd(150,230),r:rnd(20,60)})}
 function runEmitters(){E=E.filter(e=>{e.t++;const k=e.t/e.dur;
   if(e.kind==='anar'){const pw=Math.sin(Math.min(1,k)*Math.PI);
@@ -295,7 +297,7 @@ function loop(now){g.clearRect(0,0,W,H);g.globalCompositeOperation='lighter';sch
   g.globalAlpha=1;g.globalCompositeOperation='source-over';P=P.filter(p=>p.life>0);
   requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
-function celebrate(){if(reduce)return;for(let i=0;i<5;i++)setTimeout(()=>rocket(W*(.15+.175*i)),i*160);anar(W*.2);anar(W*.8);chakri(W*.5)}
+function celebrate(){if(reduce)return;for(let i=0;i<5;i++)setTimeout(()=>rocket(W*(.15+.175*i)),i*160);anar(W*.06);anar(W*.94);chakri(W*.11);chakri(W*.89)}
 
 /* ---------- Music & sound (all generated in the browser) ---------- */
 let AC=null,master,musicBus,sfxBus,playing=false,timer=null,nextT=0,step=0,phrase=[],ownAudio=null,ownURL=null;
@@ -360,9 +362,18 @@ document.getElementById('hub').addEventListener('click',()=>{ensureAudio();AC.re
 const volEl=document.getElementById('vol'),sfxEl=document.getElementById('sfxToggle');volEl.value=vol;sfxEl.checked=sfxOn;
 volEl.oninput=()=>{vol=+volEl.value;store.set('dw_vol',vol);applyVol()};
 sfxEl.onchange=()=>{sfxOn=sfxEl.checked;store.set('dw_sfx',sfxOn?'on':'off');applyVol()};
-document.getElementById('ownSong').onchange=e=>{const f=e.target.files[0];if(!f)return;const was=playing;stopMusic();
-  if(ownURL)URL.revokeObjectURL(ownURL);ownURL=URL.createObjectURL(f);ownAudio=new Audio(ownURL);ownAudio.loop=true;
-  document.getElementById('songMsg').textContent='Playing: '+f.name+' (on repeat). Choose it again after reloading the page.';if(was)startMusic()};
-document.getElementById('useBuiltIn').onclick=()=>{const was=playing;stopMusic();if(ownAudio){ownAudio.pause();ownAudio=null}
-  document.getElementById('ownSong').value='';document.getElementById('songMsg').textContent='Playing: built-in festival music (Raag Bhupali with tabla).';if(was)startMusic()};
+/* Remember the chosen song on this laptop (IndexedDB) */
+const BUILTIN_MSG='Playing: built-in festival music (Raag Bhupali with tabla).';
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open('diwali-music',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function idbPut(v){const db=await idb();return new Promise(r=>{const t=db.transaction('f','readwrite');v?t.objectStore('f').put(v,'song'):t.objectStore('f').delete('song');t.oncomplete=()=>r(true);t.onerror=()=>r(false)})}
+async function idbGet(){const db=await idb();return new Promise(r=>{const q=db.transaction('f').objectStore('f').get('song');q.onsuccess=()=>r(q.result||null);q.onerror=()=>r(null)})}
+function useSong(blob,name){const was=playing;stopMusic();if(ownAudio)ownAudio.pause();if(ownURL)URL.revokeObjectURL(ownURL);
+  ownURL=URL.createObjectURL(blob);ownAudio=new Audio(ownURL);ownAudio.loop=true;ownAudio.volume=vol/100;
+  document.getElementById('songMsg').textContent='Playing: '+name+' (on repeat). Saved on this laptop.';if(was)startMusic()}
+document.getElementById('ownSong').onchange=async e=>{const f=e.target.files[0];if(!f)return;useSong(f,f.name);
+  let ok=false;try{ok=await idbPut({blob:f,name:f.name})}catch(err){}
+  if(!ok)document.getElementById('songMsg').textContent='Playing: '+f.name+' (on repeat). This browser could not save it, so choose it again after a reload.'};
+document.getElementById('useBuiltIn').onclick=async()=>{const was=playing;stopMusic();if(ownAudio){ownAudio.pause();ownAudio=null}
+  document.getElementById('ownSong').value='';document.getElementById('songMsg').textContent=BUILTIN_MSG;try{await idbPut(null)}catch(e){}if(was)startMusic()};
+idbGet().then(v=>{if(v&&v.blob)useSong(v.blob,v.name)}).catch(()=>{});
 </script>
