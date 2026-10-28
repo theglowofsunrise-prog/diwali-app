@@ -1,0 +1,21 @@
+DIWALI SPIN & PLAY - DEPLOY STEPS (Streamlit Community Cloud)
+
+1. On GitHub, create a new repo, e.g. theglowofsunrise-prog/diwali-app
+2. Upload: app.py, diwali.html, requirements.txt, and the .streamlit folder (config.toml)
+   (Do NOT upload a secrets file - the password goes in step 4.)
+3. On share.streamlit.io: Create app -> pick the repo -> main file: app.py
+   App URL: e.g. diwali-spin-and-play  ->  Deploy
+4. App -> Settings -> Secrets, paste:
+
+[login]
+username = "admin"
+password = "Diya-Lights-2026"
+
+5. Save. Open the URL, sign in, done.
+
+ON THE DAY
+- Open the link on the hall laptop, sign in, press F11 for full screen.
+- Use Ctrl + / Ctrl - to fit the wheel to the projector.
+- Prizes and the winners list are saved in that laptop's browser,
+  so run everything from the same laptop and browser.
+- Wake the app the morning of the event (free Streamlit apps sleep when idle).
