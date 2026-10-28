@@ -88,10 +88,17 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .switch input{width:auto;accent-color:var(--saffron);transform:scale(1.3)}
 .err{color:#ff8fa8;margin:0;font-size:.9rem}
 
+.music-btn{position:fixed;right:calc(max(10px,env(safe-area-inset-right,0px)) + 42px);top:calc(10px + env(safe-area-inset-top,0px));z-index:30;
+  height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 80%,transparent);color:var(--muted);font-size:.9rem;font-weight:600;opacity:.45}
+.music-btn:hover,.music-btn:focus-visible,.music-btn[aria-pressed="true"]{opacity:1;color:var(--marigold)}
+input[type=range]{padding:0;accent-color:var(--saffron)}
+input[type=file]{font-size:.9rem}
+hr{border:0;border-top:1px dashed var(--line);margin:4px 0;width:100%}
 #fx{position:fixed;inset:0;pointer-events:none;z-index:40;width:100%;height:100%}
 </style>
 
 <canvas id="fx" aria-hidden="true"></canvas>
+<button class="music-btn" id="musicBtn" aria-pressed="false" title="Play or pause music">♪ Music</button>
 <button class="host-btn" id="hostBtn" title="Host settings" aria-label="Host settings">⚙</button>
 
 <div class="wrap">
@@ -148,6 +155,15 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       <div class="row"><button class="btn ghost" id="savePrizes">Update wheel</button><button class="btn ghost" id="resetPrizes">Reset to defaults</button></div>
       <p class="hint" id="prizeMsg"></p>
       <label class="switch"><input type="checkbox" id="fxToggle" checked> Fireworks in the background</label>
+      <hr>
+      <label for="vol">Music volume</label>
+      <input type="range" id="vol" min="0" max="100" value="60">
+      <label class="switch"><input type="checkbox" id="sfxToggle" checked> Wheel ticks and winner bell</label>
+      <label for="ownSong">Play your own song instead (MP3 on this laptop)</label>
+      <input type="file" id="ownSong" accept="audio/*">
+      <div class="row"><button class="btn ghost" id="useBuiltIn">Back to built-in festival music</button></div>
+      <p class="hint" id="songMsg">Playing: built-in festival music (Raag Bhupali with tabla).</p>
+      <hr>
       <div class="row"><button class="btn ghost" id="clearLog">Clear winners list</button><span class="hint" id="clearMsg"></span></div>
     </div>
   </div>
@@ -202,14 +218,14 @@ function spin(){if(spinning)return;spinning=true;setBtns(true);
   let final=-Math.PI/2-(target*seg+seg/2)-jitter;const turns=reduce?1:6+Math.floor(Math.random()*3);
   while(final<angle+turns*2*Math.PI)final+=2*Math.PI;
   const start=angle,dist=final-start,dur=reduce?600:5200,t0=performance.now(),ease=t=>1-Math.pow(1-t,4);
-  (function frame(now){const t=Math.min(1,(now-t0)/dur);angle=start+dist*ease(t);draw();
+  (function frame(now){const t=Math.min(1,(now-t0)/dur);angle=start+dist*ease(t);draw();tickCheck();
     if(t<1)requestAnimationFrame(frame);else{angle%=2*Math.PI;finish(pickIndex())}})(t0)}
 let log=JSON.parse(store.get('dw_log')||'[]');
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function finish(i){spinning=false;setBtns(false);const p=prizes[i],nm=document.getElementById('name').value.trim();
   const lose=/better luck|try again/i.test(p);
   document.getElementById('result').innerHTML=`<div class="who">${nm?esc(nm)+(lose?'…':' wins'):(lose?'So close':'You win')}</div><div class="prize">${esc(p)}</div>`;
-  if(!lose)celebrate();
+  if(!lose){celebrate();winSound()}
   log.unshift({n:nm||'Colleague',p,t:new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})});log=log.slice(0,60);
   store.set('dw_log',JSON.stringify(log));renderLog();document.getElementById('name').value=''}
 function renderLog(){document.getElementById('log').innerHTML=log.length?log.map(r=>`<li><span>${esc(r.n)} <small>${r.t}</small></span><span>${esc(r.p)}</span></li>`).join(''):'<li><span>No spins yet. Be the first!</span><span></span></li>'}
@@ -280,4 +296,73 @@ function loop(now){g.clearRect(0,0,W,H);g.globalCompositeOperation='lighter';sch
   requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
 function celebrate(){if(reduce)return;for(let i=0;i<5;i++)setTimeout(()=>rocket(W*(.15+.175*i)),i*160);anar(W*.2);anar(W*.8);chakri(W*.5)}
+
+/* ---------- Music & sound (all generated in the browser) ---------- */
+let AC=null,master,musicBus,sfxBus,playing=false,timer=null,nextT=0,step=0,phrase=[],ownAudio=null,ownURL=null;
+let vol=+(store.get('dw_vol')??60),sfxOn=store.get('dw_sfx')!=='off';
+const SA=146.83; // D
+const RAT=[1,9/8,5/4,3/2,5/3]; // Bhupali: Sa Re Ga Pa Dha
+const noteF=i=>{const o=Math.floor(i/5),d=((i%5)+5)%5;return SA*2*RAT[d]*Math.pow(2,o)};
+const bufCache={};
+function ensureAudio(){if(AC)return;AC=new (window.AudioContext||window.webkitAudioContext)();
+  master=AC.createGain();master.connect(AC.destination);
+  const comp=AC.createDynamicsCompressor();comp.connect(master);
+  musicBus=AC.createGain();musicBus.connect(comp);sfxBus=AC.createGain();sfxBus.connect(comp);applyVol()}
+function applyVol(){if(!AC)return;musicBus.gain.value=(vol/100)*.9;sfxBus.gain.value=sfxOn?.8:0;if(ownAudio)ownAudio.volume=vol/100}
+function pluckBuf(f,dur,decay,bright){const key=f.toFixed(2)+dur+decay;if(bufCache[key])return bufCache[key];
+  const sr=AC.sampleRate,len=Math.floor(sr*dur),b=AC.createBuffer(1,len,sr),d=b.getChannelData(0),N=Math.max(2,Math.round(sr/f));
+  for(let i=0;i<N;i++)d[i]=(Math.random()*2-1)*(i<N*bright?1:.4);
+  for(let i=N;i<len;i++){let y=decay*.5*(d[i-N]+d[i-N-1]);if(Math.abs(y)>.32)y*=.9;d[i]=y} // slight clip = sitar buzz
+  return bufCache[key]=b}
+function pluck(f,t,g=.5,dur=2.2,decay=.997,dest=musicBus,detune=0){const s=AC.createBufferSource();s.buffer=pluckBuf(f,dur,decay,.6);s.detune.value=detune;
+  const v=AC.createGain();v.gain.value=g;s.connect(v);v.connect(dest);s.start(t)}
+function tone(f,t,g,dec,type='sine',f2=null,dest=musicBus){const o=AC.createOscillator(),v=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);
+  if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dec*.6);v.gain.setValueAtTime(0,t);v.gain.linearRampToValueAtTime(g,t+.005);
+  v.gain.exponentialRampToValueAtTime(.0001,t+dec);o.connect(v);v.connect(dest);o.start(t);o.stop(t+dec+.05)}
+function noise(t,g,dec,hp=2000,dest=musicBus){const len=Math.floor(AC.sampleRate*dec),b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);const s=AC.createBufferSource();s.buffer=b;
+  const f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=hp;const v=AC.createGain();v.gain.value=g;s.connect(f);f.connect(v);v.connect(dest);s.start(t)}
+/* tabla bols */
+const ge=(t,g=.55)=>tone(78,t,g,.5,'sine',112);
+const na=(t,g=.28)=>{tone(SA*2,t,g,.3);tone(SA*4,t,g*.4,.18);noise(t,g*.25,.03,3000)};
+const ti=(t,g=.18)=>noise(t,g,.06,1800);
+const tun=(t,g=.25)=>tone(SA*2,t,g,.7);
+const KEHERWA=[t=>{ge(t);na(t)},t=>ge(t,.35),t=>na(t),t=>ti(t),t=>na(t,.22),t=>ti(t,.12),t=>{ge(t,.45);tun(t)},t=>na(t)];
+function newPhrase(){const p=[];let i=Math.random()<.5?5:7;const len=8+Math.floor(Math.random()*5);
+  for(let k=0;k<len;k++){const r=Math.random();if(r<.12){p.push(null);continue}
+    i+=r<.45?1:r<.85?-1:(Math.random()<.5?2:-2);i=Math.max(2,Math.min(11,i));p.push(i)}
+  p.push(Math.random()<.6?5:8,null,null);return p}
+const BEAT=.32; // seconds per matra
+function schedMusic(){while(nextT<AC.currentTime+.25){const t=nextT,m=step%8;
+    KEHERWA[m](t);
+    if(m===0||m===4){pluck(SA*.75,t,.22,4,.9985);} // Pa (low)
+    if(m===2||m===6){pluck(SA,t,.2,4,.9985);pluck(SA,t+BEAT*.5,.16,4,.9985,musicBus,4)}
+    if(step%2===0){if(!phrase.length)phrase=newPhrase();const n=phrase.shift();
+      if(n!=null){pluck(noteF(n),t,.42,2.2,.996);if(Math.random()<.3&&phrase[0]!=null)pluck(noteF(n),t+BEAT*.5,.3,1.6,.995,musicBus,-25)}}
+    step++;nextT+=BEAT}}
+function startMusic(){ensureAudio();AC.resume();
+  if(ownAudio){ownAudio.volume=vol/100;ownAudio.play().catch(()=>{})}
+  else{nextT=AC.currentTime+.1;step=0;phrase=[];schedMusic();timer=setInterval(schedMusic,40)}
+  playing=true;updateBtn()}
+function stopMusic(){clearInterval(timer);timer=null;if(ownAudio)ownAudio.pause();playing=false;updateBtn()}
+function updateBtn(){const b=document.getElementById('musicBtn');b.setAttribute('aria-pressed',playing);b.textContent=playing?'♪ Pause music':'♪ Music'}
+document.getElementById('musicBtn').onclick=()=>playing?stopMusic():startMusic();
+/* sound effects */
+let lastSeg=null;
+function tickCheck(){if(!AC||!sfxOn)return;const seg=Math.floor(angle/(2*Math.PI/prizes.length));
+  if(lastSeg!==null&&seg!==lastSeg){const t=AC.currentTime;tone(1800,t,.18,.04,'triangle',null,sfxBus)}lastSeg=seg}
+function winSound(){if(!AC||!sfxOn)return;const t=AC.currentTime;
+  [1,2.76,5.4,8.93].forEach((h,i)=>tone(SA*4*h,t,.25/(i+1),2.4,'sine',null,sfxBus)); // temple bell
+  [0,1,2,3,4,5,7,8].forEach((n,i)=>pluck(noteF(n+5),t+.15+i*.09,.35,2,.996,sfxBus))}
+document.getElementById('spinBtn').addEventListener('click',()=>{ensureAudio();AC.resume()},true);
+document.getElementById('hub').addEventListener('click',()=>{ensureAudio();AC.resume()},true);
+/* host controls */
+const volEl=document.getElementById('vol'),sfxEl=document.getElementById('sfxToggle');volEl.value=vol;sfxEl.checked=sfxOn;
+volEl.oninput=()=>{vol=+volEl.value;store.set('dw_vol',vol);applyVol()};
+sfxEl.onchange=()=>{sfxOn=sfxEl.checked;store.set('dw_sfx',sfxOn?'on':'off');applyVol()};
+document.getElementById('ownSong').onchange=e=>{const f=e.target.files[0];if(!f)return;const was=playing;stopMusic();
+  if(ownURL)URL.revokeObjectURL(ownURL);ownURL=URL.createObjectURL(f);ownAudio=new Audio(ownURL);ownAudio.loop=true;
+  document.getElementById('songMsg').textContent='Playing: '+f.name+' (on repeat). Choose it again after reloading the page.';if(was)startMusic()};
+document.getElementById('useBuiltIn').onclick=()=>{const was=playing;stopMusic();if(ownAudio){ownAudio.pause();ownAudio=null}
+  document.getElementById('ownSong').value='';document.getElementById('songMsg').textContent='Playing: built-in festival music (Raag Bhupali with tabla).';if(was)startMusic()};
 </script>
