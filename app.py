@@ -61,8 +61,26 @@ if not st.session_state.get("signed_in"):
     login_screen()
     st.stop()
 
-html = (Path(__file__).parent / "diwali.html").read_text(encoding="utf-8")
-components.html(html, height=900, scrolling=True)
+@st.cache_data(show_spinner=False)
+def build_page():
+    """Embed every audio file from the music folder into the page as its festival playlist."""
+    import base64, json, re
+    here = Path(__file__).parent
+    html = (here / "diwali.html").read_text(encoding="utf-8")
+    types = {".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".ogg": "audio/ogg", ".wav": "audio/wav"}
+    tracks = []
+    music = here / "music"
+    if music.is_dir():
+        for f in sorted(music.iterdir()):
+            if f.suffix.lower() in types:
+                data = base64.b64encode(f.read_bytes()).decode("ascii")
+                name = re.sub(r"^\d+\s*", "", f.stem.replace("-", " ").replace("_", " ")).strip() or f.stem
+                tracks.append({"name": name, "src": f"data:{types[f.suffix.lower()]};base64,{data}"})
+    playlist = json.dumps(tracks).replace("</", "<\\/")
+    return html.replace("/*PLAYLIST*/[]/*END*/", playlist)
+
+
+components.html(build_page(), height=900, scrolling=True)
 
 _, right = st.columns([6, 1])
 with right:
