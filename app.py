@@ -61,8 +61,15 @@ if not st.session_state.get("signed_in"):
     login_screen()
     st.stop()
 
-@st.cache_data(show_spinner=False)
-def build_page():
+def files_signature():
+    """Changes whenever diwali.html or any music file changes, so the cached page is rebuilt."""
+    here = Path(__file__).parent
+    files = [here / "diwali.html"] + (sorted((here / "music").iterdir()) if (here / "music").is_dir() else [])
+    return tuple((f.name, f.stat().st_size, f.stat().st_mtime) for f in files if f.is_file())
+
+
+@st.cache_data(show_spinner=False, max_entries=2)
+def build_page(signature):
     """Embed every audio file from the music folder into the page as its festival playlist."""
     import base64, json, re
     here = Path(__file__).parent
@@ -80,7 +87,7 @@ def build_page():
     return html.replace("/*PLAYLIST*/[]/*END*/", playlist)
 
 
-components.html(build_page(), height=900, scrolling=True)
+components.html(build_page(files_signature()), height=900, scrolling=True)
 
 _, right = st.columns([6, 1])
 with right:
