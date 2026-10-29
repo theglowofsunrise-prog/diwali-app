@@ -1,7 +1,7 @@
 <title>Diwali Spin & Play</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Hind:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Great+Vibes&family=Hind:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: festival night stage — wheel as hero, a slim side column for name / result / winners, diyas framing the page, fireworks layered over everything. Single committed dark look. */
 :root{
@@ -17,11 +17,15 @@ html,body{background:var(--night);color:var(--cream);margin:0}
 img{max-width:100%}
 body{font-family:var(--body);font-size:16px;line-height:1.5;min-height:100vh;
   background:radial-gradient(1200px 700px at 50% -10%,var(--night-2),var(--night) 70%)}
-.wrap{max-width:1040px;margin:0 auto;padding-block:16px 8px;
+.wrap{max-width:1040px;margin:0 auto;padding-block:48px 8px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));position:relative;z-index:1}
 header{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,28px);margin-bottom:6px}
 .titles{text-align:center;display:grid;gap:2px}
-.eyebrow{font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--marigold);font-weight:600}
+.eyebrow{font-family:"Great Vibes","Brush Script MT",cursive;font-size:clamp(1.7rem,4vw,2.5rem);line-height:1.1;color:var(--marigold);
+  display:flex;align-items:center;justify-content:center;gap:.5em;text-shadow:0 0 14px rgba(246,168,33,.5)}
+.eyebrow span{background:linear-gradient(90deg,#ffd27a,#f6a821 45%,#ff8a3d);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;filter:drop-shadow(0 0 8px rgba(246,168,33,.5));padding:0 .1em}
+.eyebrow::before,.eyebrow::after{content:"";width:clamp(24px,5vw,60px);height:2px;background:linear-gradient(90deg,transparent,var(--marigold))}
+.eyebrow::after{background:linear-gradient(90deg,var(--marigold),transparent)}
 h1{font-family:var(--display);font-weight:400;font-size:clamp(2.1rem,6vw,3.6rem);line-height:1.05;margin:0;text-wrap:balance}
 h1 span{color:var(--marigold)}
 .sub{color:var(--muted);margin:0}
@@ -105,7 +109,7 @@ hr{border:0;border-top:1px dashed var(--line);margin:4px 0;width:100%}
   <header>
     <span class="diya" style="--s:clamp(48px,8vw,84px)" data-diya></span>
     <div class="titles">
-      <div class="eyebrow">Colleague celebration · Festival of Lights</div>
+      <div class="eyebrow"><span>Festival of Lights</span></div>
       <h1>Happy <span>Diwali</span>, team</h1>
       <p class="sub">Step up, spin the wheel and light up your luck.</p>
     </div>
@@ -257,17 +261,49 @@ const fx=document.getElementById('fx'),g=fx.getContext('2d');let W,H,DPR;
 function size(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;fx.width=W*DPR;fx.height=H*DPR;g.setTransform(DPR,0,0,DPR,0,0)}
 addEventListener('resize',size);size();
 const PAL=[['#ffd27a','#fff4dc'],['#ff6b3d','#ffd27a'],['#ff4f8b','#ffc0d6'],['#7cf0b0','#e6fff2'],['#8fb3ff','#ffffff'],['#c78bff','#ffe1ff'],['#f6a821','#e8601c']];
-let P=[],E=[],R=[];const MAXP=1600;
+let P=[],E=[],R=[];const MAXP=3200;let FL=[];
 const rnd=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.floor(Math.random()*a.length)];
-function spark(x,y,vx,vy,c,life,o={}){if(P.length>=MAXP)return;P.push({x,y,px:x,py:y,vx,vy,c,life,max:life,g:o.g??.05,drag:o.drag??.985,w:o.w??2,tw:o.tw||0})}
+function spark(x,y,vx,vy,c,life,o={}){if(P.length>=MAXP)return;P.push({x,y,px:x,py:y,vx,vy,c,life,max:life,g:o.g??.05,drag:o.drag??.985,w:o.w??2,tw:o.tw?1:0,trail:o.trail||0,strobe:o.strobe||0,split:o.split||null})}
 function ground(){const r=document.getElementById('diyaRow').getBoundingClientRect();return Math.max(H*.45,Math.min(H-8,r.top+r.height*.35))}
 function sideX(){return Math.random()<.5?rnd(W*.03,W*.13):rnd(W*.87,W*.97)}
-function rocket(x){R.push({x:x??rnd(W*.1,W*.9),y:ground(),vx:rnd(-.8,.8),vy:-rnd(7,10),c:pick(PAL),type:pick(['peony','peony','ring','willow','crackle'])})}
-function explode(r){const [c1,c2]=r.c,n=r.type==='ring'?70:r.type==='willow'?90:110;
-  for(let i=0;i<n;i++){const a=r.type==='ring'?i/n*Math.PI*2:rnd(0,Math.PI*2),s=r.type==='ring'?4.2:rnd(1,r.type==='willow'?3.2:5.5);
-    const c=r.type==='willow'?'#ffcf6b':(Math.random()<.7?c1:c2);
-    spark(r.x,r.y,Math.cos(a)*s,Math.sin(a)*s,c,r.type==='willow'?rnd(90,130):rnd(55,85),{g:r.type==='willow'?.035:.05,drag:r.type==='willow'?.975:.982,w:2.2,tw:r.type==='crackle'||Math.random()<.25?1:0})}
-  if(r.type==='crackle')setTimeout(()=>{for(let i=0;i<40;i++)spark(r.x+rnd(-90,90),r.y+rnd(-60,90),rnd(-1,1),rnd(-1,1),'#fff',rnd(10,22),{g:0,w:2.6,tw:1})},500)}
+const SHELLS=['peony','peony','chrys','ring','willow','crackle','palm','crossette','strobe','heart','double'];
+const sc=()=>Math.max(.75,Math.min(1.6,Math.min(W,H)/650));
+/* where shells burst: the top band, or high up on the left/right edges */
+function skyTarget(){const r=Math.random();
+  if(r<.5)return{x:rnd(W*.06,W*.94),y:rnd(H*.06,H*.26)};
+  if(r<.75)return{x:rnd(W*.02,W*.16),y:rnd(H*.1,H*.5)};
+  return{x:rnd(W*.84,W*.98),y:rnd(H*.1,H*.5)}}
+function rocket(x,ty,type){const tg=skyTarget();if(x!=null)tg.x=x;if(ty!=null)tg.y=ty;
+  const sx=Math.max(4,Math.min(W-4,tg.x+rnd(-W*.04,W*.04))),sy=ground(),h=Math.max(60,sy-tg.y);
+  const vy=-Math.sqrt(2*.12*h),frames=-vy/.12;
+  R.push({x:sx,y:sy,vx:(tg.x-sx)/frames,vy,c:pick(PAL),type:type||pick(SHELLS)})}
+function flash(x,y,c,r){FL.push({x,y,c,r,life:14})}
+function explode(r){const [c1,c2]=r.c,k=sc(),T=r.type,x=r.x,y=r.y;flash(x,y,c1,90*k);
+  const burst=(n,sp,life,o,col)=>{for(let i=0;i<n;i++){const a=o.even?i/n*Math.PI*2:rnd(0,Math.PI*2),s=(o.even?sp:rnd(sp*.25,sp))*k;
+    spark(x,y,Math.cos(a)*s,Math.sin(a)*s,col?col(i):(Math.random()<.7?c1:c2),rnd(life*.8,life*1.2),o)}};
+  if(T==='peony')burst(130,5.5,75,{g:.045,drag:.982,w:2.2,tw:Math.random()<.3});
+  else if(T==='chrys')burst(170,6,95,{g:.04,drag:.984,w:1.8,trail:1});
+  else if(T==='ring'){burst(80,4.4,70,{even:1,g:.035,drag:.982,w:2.4});burst(40,1.6,60,{g:.03,drag:.98,w:2},()=>c2)}
+  else if(T==='double'){const o=pick(PAL);burst(90,6,80,{even:1,g:.04,drag:.982,w:2.2});burst(70,3,75,{even:1,g:.04,drag:.982,w:2.2},()=>o[0])}
+  else if(T==='willow')burst(120,3.6,150,{g:.03,drag:.976,w:2,trail:1},()=>pick(['#ffcf6b','#ffb347','#fff1c4']));
+  else if(T==='palm')for(let i=0;i<9;i++){const a=i/9*Math.PI*2+rnd(-.1,.1);for(let j=0;j<14;j++){const s=(3+j*.28)*k;
+      spark(x,y,Math.cos(a)*s,Math.sin(a)*s,j<3?'#fff4dc':c1,rnd(85,110),{g:.05,drag:.98,w:2.6})}}
+  else if(T==='crackle'){burst(110,5,70,{g:.045,drag:.982,w:2,tw:1});
+    setTimeout(()=>{for(let i=0;i<70;i++)spark(x+rnd(-130,130)*k,y+rnd(-90,120)*k,rnd(-1,1),rnd(-1,1),'#fff',rnd(10,22),{g:0,w:2.6,tw:1})},550)}
+  else if(T==='crossette'){for(let i=0;i<12;i++){const a=i/12*Math.PI*2,s=4.2*k;spark(x,y,Math.cos(a)*s,Math.sin(a)*s,c1,38,{g:.03,drag:.985,w:2.6,split:c2})}}
+  else if(T==='strobe')burst(140,5.2,110,{g:.03,drag:.98,w:2.8,strobe:1},()=>Math.random()<.6?'#ffffff':c2);
+  else if(T==='heart')for(let i=0;i<90;i++){const t=i/90*Math.PI*2,hx=16*Math.pow(Math.sin(t),3),hy=-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t));
+      spark(x,y,hx*.28*k,hy*.28*k,pick(['#ff4f8b','#ff8fb3','#ffd0e0']),rnd(70,85),{g:.02,drag:.975,w:2.4})}
+}
+/* Sydney-style barrage: a row of shells bursting one after another across the sky, plus fans from the side towers */
+function barrage(){const n=7+Math.floor(Math.random()*5),T=pick(SHELLS),ltr=Math.random()<.5,y=rnd(H*.08,H*.2);
+  for(let i=0;i<n;i++)setTimeout(()=>{const f=(i+.5)/n;rocket(W*(ltr?f:1-f),y+rnd(-H*.03,H*.03),Math.random()<.6?T:undefined)},i*170);
+  setTimeout(()=>{fan(W*.04,1);fan(W*.96,-1)},300)}
+function sideShow(){const left=Math.random()<.5,x0=left?rnd(W*.04,W*.12):rnd(W*.88,W*.96);
+  for(let i=0;i<4;i++)setTimeout(()=>rocket(x0+rnd(-W*.03,W*.03),rnd(H*.1,H*.45)),i*260)}
+/* comets fanned out from the screen edges */
+function fan(x,dir){const c=pick(PAL);for(let i=0;i<7;i++)setTimeout(()=>{const a=-Math.PI/2+dir*(i/6)*.9,s=rnd(9,11)*Math.sqrt(H/700);
+  R.push({x,y:ground(),vx:Math.cos(a)*s*.55,vy:Math.sin(a)*s,c,type:'comet'})},i*70)}
 function anar(x){E.push({kind:'anar',x:x??sideX(),y:ground(),t:0,dur:rnd(180,260)})}
 function chakri(x){E.push({kind:'chakri',x:x??sideX(),y:ground()-rnd(10,40),t:0,dur:rnd(160,220),a:0})}
 function phuljhari(){const x=rnd(W*.1,W*.9),y=rnd(H*.25,H*.75);E.push({kind:'phul',x,y,ox:x,oy:y,t:0,dur:rnd(150,230),r:rnd(20,60)})}
@@ -281,23 +317,30 @@ function runEmitters(){E=E.filter(e=>{e.t++;const k=e.t/e.dur;
     for(let i=0;i<7;i++){const a=rnd(0,Math.PI*2),s=rnd(1.5,4.5);spark(e.x,e.y,Math.cos(a)*s,Math.sin(a)*s,Math.random()<.8?'#fffbe8':'#ffd27a',rnd(6,16),{g:.02,drag:.9,w:1.4,tw:1})}
     g.fillStyle='rgba(255,250,220,.9)';g.beginPath();g.arc(e.x,e.y,3,0,7);g.fill()}
   return e.t<e.dur})}
-let next=performance.now()+800;
-function schedule(now){if(!ambient||reduce||document.hidden||now<next)return;
-  const r=Math.random();if(r<.45)rocket();else if(r<.65)anar();else if(r<.82)chakri();else phuljhari();
-  if(Math.random()<.25)setTimeout(()=>rocket(),250);
-  next=now+rnd(700,1900)}
+let next=performance.now()+800,nextBig=performance.now()+5000;
+function schedule(now){if(!ambient||reduce||document.hidden)return;
+  if(now>=nextBig){Math.random()<.6?barrage():sideShow();nextBig=now+rnd(9000,16000)}
+  if(now<next)return;
+  const r=Math.random();if(r<.62){rocket();if(Math.random()<.45)setTimeout(()=>rocket(),rnd(150,400))}
+  else if(r<.76)anar();else if(r<.88)chakri();else phuljhari();
+  next=now+rnd(500,1300)}
 function loop(now){g.clearRect(0,0,W,H);g.globalCompositeOperation='lighter';schedule(now);
   R=R.filter(r=>{r.x+=r.vx;r.y+=r.vy;r.vy+=.12;g.fillStyle=r.c[1];g.beginPath();g.arc(r.x,r.y,2.4,0,7);g.fill();
     spark(r.x,r.y+4,rnd(-.4,.4),rnd(.5,1.5),'#ffb347',rnd(12,22),{g:.02,w:1.4});
-    if(r.vy>=-.5){explode(r);return false}return true});
+    if(r.vy>=-.5){if(r.type!=='comet')explode(r);else for(let i=0;i<24;i++)spark(r.x,r.y,rnd(-2,2),rnd(-2,1),r.c[0],rnd(25,45),{g:.05,w:1.8,tw:1});return false}return true});
   runEmitters();
+  FL=FL.filter(f=>{const gr=g.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r);gr.addColorStop(0,f.c);gr.addColorStop(1,'rgba(0,0,0,0)');
+    g.globalAlpha=f.life/14*.35;g.fillStyle=gr;g.beginPath();g.arc(f.x,f.y,f.r,0,7);g.fill();return --f.life>0});
+  const born=[];
   for(const p of P){p.px=p.x;p.py=p.y;p.vx*=p.drag;p.vy=p.vy*p.drag+p.g;p.x+=p.vx;p.y+=p.vy;p.life--;
-    let a=Math.max(0,p.life/p.max);if(p.tw)a*=Math.random()<.5?1:.2;
+    if(p.trail&&p.life%3===0&&born.length<300)born.push({x:p.x,y:p.y,px:p.x,py:p.y,vx:0,vy:.3,c:p.c,life:14,max:14,g:.02,drag:.95,w:1.2,tw:0});
+    if(p.split&&p.life===0)for(let j=0;j<4;j++){const a=j*Math.PI/2+Math.PI/4,s=2.4;born.push({x:p.x,y:p.y,px:p.x,py:p.y,vx:p.vx+Math.cos(a)*s,vy:p.vy+Math.sin(a)*s,c:p.split,life:40,max:40,g:.04,drag:.975,w:2,tw:1})}
+    let a=Math.max(0,p.life/p.max);if(p.tw)a*=Math.random()<.5?1:.2;if(p.strobe&&p.life<p.max*.6)a*=(p.life>>2)%2?1:0;
     g.globalAlpha=a;g.strokeStyle=p.c;g.lineWidth=p.w;g.beginPath();g.moveTo(p.px,p.py);g.lineTo(p.x,p.y);g.stroke()}
-  g.globalAlpha=1;g.globalCompositeOperation='source-over';P=P.filter(p=>p.life>0);
+  g.globalAlpha=1;g.globalCompositeOperation='source-over';P=P.filter(p=>p.life>0);for(const b of born)if(P.length<MAXP)P.push(b);
   requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
-function celebrate(){if(reduce)return;for(let i=0;i<5;i++)setTimeout(()=>rocket(W*(.15+.175*i)),i*160);anar(W*.06);anar(W*.94);chakri(W*.11);chakri(W*.89)}
+function celebrate(){if(reduce)return;barrage();for(let i=0;i<4;i++)setTimeout(()=>rocket(i%2?rnd(W*.84,W*.98):rnd(W*.02,W*.16)),600+i*200);anar(W*.06);anar(W*.94);chakri(W*.11);chakri(W*.89)}
 
 /* ---------- Music & sound ---------- */
 let AC=null,master,musicBus,sfxBus,playing=false,ownAudio=null,ownURL=null;
